@@ -52,6 +52,7 @@ int main() {
         Sleep(500); // Retry every 0.5 seconds
     }
 
+    
     printf("Connected to receiver!\n");
 
     while (1) {
