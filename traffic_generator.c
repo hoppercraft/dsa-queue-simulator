@@ -1,11 +1,13 @@
+// vehicle_sender.c
+#include <windows.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include <unistd.h> // For sleep()
 
-#define FILENAME "vehicles.data"
+#define PIPE_NAME "\\\\.\\pipe\\VehicleQueuePipe"
+#define MAX_TEXT 100
 
-// Function to generate a random vehicle number
+// Generate a random vehicle number
 void generateVehicleNumber(char* buffer) {
     buffer[0] = 'A' + rand() % 26;
     buffer[1] = 'A' + rand() % 26;
@@ -18,35 +20,53 @@ void generateVehicleNumber(char* buffer) {
     buffer[8] = '\0';
 }
 
-// Function to generate a random lane
+// Generate a random lane
 char generateLane() {
     char lanes[] = {'A', 'B', 'C', 'D'};
     return lanes[rand() % 4];
 }
 
 int main() {
-    FILE* file = fopen(FILENAME, "a");
-    if (!file) {
-        perror("Error opening file");
-        return 1;
+    HANDLE pipe;
+    DWORD bytesWritten;
+    char message[MAX_TEXT];
+
+    srand((unsigned int)time(NULL));
+
+    printf("Connecting to receiver...\n");
+
+    // Connect to the named pipe
+    while (1) {
+        pipe = CreateFileA(
+            PIPE_NAME,
+            GENERIC_WRITE,
+            0,
+            NULL,
+            OPEN_EXISTING,
+            0,
+            NULL
+        );
+
+        if (pipe != INVALID_HANDLE_VALUE) break;
+
+        Sleep(500); // Retry every 0.5 seconds
     }
 
-    srand(time(NULL)); // Initialize random seed
+    printf("Connected to receiver!\n");
 
     while (1) {
         char vehicle[9];
         generateVehicleNumber(vehicle);
         char lane = generateLane();
+        snprintf(message, MAX_TEXT, "%s:%c", vehicle, lane);
 
-        // Write to file
-        fprintf(file, "%s:%c\n", vehicle, lane);
-        fflush(file); // Ensure data is written immediately
+        // Send message
+        WriteFile(pipe, message, (DWORD)strlen(message), &bytesWritten, NULL);
+        printf("Sent: %s\n", message);
 
-        printf("Generated: %s:%c\n", vehicle, lane); // Print to console
-
-        sleep(1); // Wait 1 second before generating next entry
+        Sleep(1000); // wait 1 second
     }
 
-    fclose(file);
+    CloseHandle(pipe);
     return 0;
 }

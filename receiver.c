@@ -1,35 +1,53 @@
+// vehicle_receiver.c
+#include <windows.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/ipc.h>
-#include <sys/msg.h>
 
-#define MSG_QUEUE_KEY 1234
+#define PIPE_NAME "\\\\.\\pipe\\VehicleQueuePipe"
 #define MAX_TEXT 100
 
-struct message {
-    long msg_type;
-    char vehicleQueue[MAX_TEXT];
-};
-
 int main() {
-    key_t key = MSG_QUEUE_KEY;
-    int msgid;
-    struct message msg;
-    
-    msgid = msgget(key, 0666 | IPC_CREAT);
-    if (msgid == -1) {
-        perror("msgget failed");
-        exit(1);
+    HANDLE pipe;
+    char buffer[MAX_TEXT];
+    DWORD bytesRead;
+
+    // Create named pipe
+    pipe = CreateNamedPipeA(
+        PIPE_NAME,
+        PIPE_ACCESS_INBOUND, // read-only
+        PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT,
+        1,          // max instances
+        MAX_TEXT,   // out buffer
+        MAX_TEXT,   // in buffer
+        0,
+        NULL
+    );
+
+    if (pipe == INVALID_HANDLE_VALUE) {
+        printf("CreateNamedPipe failed. Error %d\n", GetLastError());
+        return 1;
     }
-    printf("Receiver is running... Waiting for messages.\n");
+
+    printf("Waiting for sender to connect...\n");
+
+    if (!ConnectNamedPipe(pipe, NULL)) {
+        printf("ConnectNamedPipe failed. Error %d\n", GetLastError());
+        CloseHandle(pipe);
+        return 1;
+    }
+
+    printf("Sender connected!\n");
+
     while (1) {
-        // Receive message (blocking call)
-        if (msgrcv(msgid, &msg, sizeof(msg.vehicleQueue), 1, 0) == -1) {
-            perror("msgrcv failed");
-            exit(1);
+        BOOL success = ReadFile(pipe, buffer, sizeof(buffer)-1, &bytesRead, NULL);
+        if (!success || bytesRead == 0) {
+            printf("ReadFile failed or sender disconnected. Error %d\n", GetLastError());
+            break;
         }
-        printf("Received: %s\n", msg.vehicleQueue);
+
+        buffer[bytesRead] = '\0'; // Null-terminate
+        printf("Received: %s\n", buffer);
     }
+
+    CloseHandle(pipe);
     return 0;
 }
