@@ -2,7 +2,7 @@
 #include <windows.h>
 #include <stdio.h>
 #include <string.h>
-
+#include <SDL3/SDL.h>
 #define PIPE_NAME "\\\\.\\pipe\\VehicleQueuePipe"
 #define MAX_TEXT 100
 #define MAX_SIZE 100
