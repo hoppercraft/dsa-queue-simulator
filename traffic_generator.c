@@ -17,13 +17,24 @@ void generateVehicleNumber(char* buffer) {
     buffer[5] = '0' + rand() % 10;
     buffer[6] = '0' + rand() % 10;
     buffer[7] = '0' + rand() % 10;
-    buffer[8] = '\0';
+    buffer[9] = '\0';
 }
 
 // Generate a random lane
-char generateLane() {
-    char lanes[] = {'A', 'B', 'C', 'D'};
+char generateOutgoingDirection() {
+    char lanes[] = {'0', '1', '2', '3'};
     return lanes[rand() % 4];
+}
+
+char generateIncomingDirection(char incoming) {
+    char lanes[] = {'0', '1', '2', '3'};
+    char outgoing;
+
+    do {
+        outgoing = lanes[rand() % 4];
+    } while (outgoing == incoming); 
+
+    return outgoing;
 }
 
 int main() {
@@ -58,8 +69,9 @@ int main() {
     while (1) {
         char vehicle[9];
         generateVehicleNumber(vehicle);
-        char lane = generateLane();
-        snprintf(message, MAX_TEXT, "%s:%c", vehicle, lane);
+        char inlane = generateOutgoingDirection();
+        char outlane = generateIncomingDirection(inlane);
+        snprintf(message, MAX_TEXT, "%s:%c%c", vehicle, inlane,outlane);
 
         // Send message
         WriteFile(pipe, message, (DWORD)strlen(message), &bytesWritten, NULL);
