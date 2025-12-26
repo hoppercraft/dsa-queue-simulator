@@ -148,19 +148,32 @@ unsigned __stdcall chequeQueue(void* arg) {
     SharedData* data = (SharedData*)arg;
     while (1) {
         if(data->priority==4){
-            // Green phase
             data->lightPhase = 0;
-            Sleep(8000);
-            // Yellow phase
+            Sleep(5000);
             data->lightPhase = 1;
             Sleep(2000);
-            // Change to next light
             data->nextLight=(data->nextLight+1)%4;
         }
         else{
             data->nextLight=data->priority;
             data->lightPhase = 0;
-            Sleep(10000);
+            Sleep(5000);
+        }
+
+        for (int r = 0; r < 4; r++) {
+            int count = 0;
+            for (int l = 1; l < 3; l++) {  
+                Queue* q = &data->traffic[r][l];
+                
+                
+                if (!isEmpty(q)) {
+                    count += (q->rear - q->front) + 1;
+                }
+
+                if (count > 5) {
+                    data->nextLight = r; 
+                }
+            }
         }
     }
     return 0;
@@ -289,7 +302,7 @@ void drawVehicles(SDL_Renderer* renderer, SharedData* sharedData) {
             for (int i = q->front; i <= q->rear; i++) {
                 Vehicle* v = &q->data[i];
                 int actualPosInLine = 0;
-                float targetProgress=1500.0f; 
+                float targetProgress = 1500.0f; 
 
                 if (sharedData->nextLight != road && v->progress <= stopLineDistance) {
                     for (int j = q->front; j <= q->rear; j++) {
