@@ -29,16 +29,16 @@ typedef struct {
 typedef struct {
     int nextLight;
     int priority;
-    int lightPhase; // 0: green, 1: yellow
+    int lightPhase; 
     Queue traffic[4][3];
 } SharedData;
 
 bool initializeSDL(SDL_Window **window, SDL_Renderer **renderer);
 void drawRoadsAndLanes(SDL_Renderer *renderer);
-void drawLightForA(SDL_Renderer* renderer, bool isRed);
-void drawLightForB(SDL_Renderer* renderer, bool isRed);
-void drawLightForC(SDL_Renderer* renderer, bool isRed);
-void drawLightForD(SDL_Renderer* renderer, bool isRed);
+void drawLightForA(SDL_Renderer* renderer, bool isRed ,bool lightPhase);
+void drawLightForB(SDL_Renderer* renderer, bool isRed,bool lightPhase);
+void drawLightForC(SDL_Renderer* renderer, bool isRed,bool lightPhase);
+void drawLightForD(SDL_Renderer* renderer, bool isRed,bool lightPhase);
 void refreshLight(SDL_Renderer *renderer, SharedData* sharedData);
 void drawVehicles(SDL_Renderer* renderer, SharedData* sharedData);
 
@@ -81,7 +81,7 @@ int main() {
             }
         }
 
-        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+        SDL_SetRenderDrawColor(renderer, 34, 139, 34, 255);
         SDL_RenderClear(renderer);
         
         drawRoadsAndLanes(renderer);
@@ -146,20 +146,38 @@ unsigned __stdcall pipeListenerThread(void* arg) {
 
 unsigned __stdcall chequeQueue(void* arg) {
     SharedData* data = (SharedData*)arg;
+    
+
+
     while (1) {
+        int total_cars=0,avg_cars=0,greenlight_time;
+        for (int r = 0; r < 4; r++) {
+            for (int l = 1; l < 3; l++) {  
+                Queue* q = &data->traffic[r][l];
+                if (!isEmpty(q)) {
+                    total_cars += (q->rear - q->front) + 1;
+                }
+            }
+        }
+        avg_cars=(total_cars+2)/3;
+        greenlight_time=avg_cars*2000;
+        bool foundCongestion = false;
         if(data->priority==4){
             data->lightPhase = 0;
-            Sleep(5000);
+            Sleep(greenlight_time);
             data->lightPhase = 1;
             Sleep(2000);
             data->nextLight=(data->nextLight+1)%4;
         }
         else{
             data->nextLight=data->priority;
+            data->priority=4;
             data->lightPhase = 0;
-            Sleep(5000);
+            Sleep(greenlight_time);
         }
-
+        if (!foundCongestion) {
+            data->priority = 4;
+        }
         for (int r = 0; r < 4; r++) {
             int count = 0;
             for (int l = 1; l < 3; l++) {  
@@ -171,7 +189,8 @@ unsigned __stdcall chequeQueue(void* arg) {
                 }
 
                 if (count > 5) {
-                    data->nextLight = r; 
+                    foundCongestion = true;
+                    data->priority = r; 
                 }
             }
         }
@@ -218,7 +237,7 @@ void drawRoadsAndLanes(SDL_Renderer* renderer) {
     SDL_FRect hRoad = {0, WINDOW_HEIGHT/2.0f - ROAD_WIDTH/2.0f, (float)WINDOW_WIDTH, ROAD_WIDTH};
     SDL_RenderFillRect(renderer, &hRoad);
 
-    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+    SDL_SetRenderDrawColor(renderer, 200, 200, 200, 255);
     for(int i = 0; i <= 3; i++){
         float offset = WINDOW_HEIGHT/2.0f - ROAD_WIDTH/2.0f + LANE_WIDTH*i;
         SDL_RenderLine(renderer, 0, offset, WINDOW_WIDTH/2.0f - ROAD_WIDTH/2.0f, offset);
@@ -230,49 +249,61 @@ void drawRoadsAndLanes(SDL_Renderer* renderer) {
     }
 }
 
-void drawLightForA(SDL_Renderer* renderer, bool isRed) {
+void drawLightForA(SDL_Renderer* renderer, bool isRed,bool lightPhase) {
     SDL_FRect box = {265, 140, 30, 60}; 
     SDL_SetRenderDrawColor(renderer, 30, 30, 30, 255);
     SDL_RenderFillRect(renderer, &box);
 
-    if(!isRed) SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
-    else SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
+    if (!isRed || lightPhase == 1) {
+        SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+    } else {
+        SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
+    }
     
     SDL_FRect bulb = {270, 150, 20, 40};
     SDL_RenderFillRect(renderer, &bulb);
 }
 
-void drawLightForB(SDL_Renderer* renderer, bool isRed) {
+void drawLightForB(SDL_Renderer* renderer, bool isRed,bool lightPhase) {
     SDL_FRect box = {140, 505, 60, 30}; 
     SDL_SetRenderDrawColor(renderer, 30, 30, 30, 255);
     SDL_RenderFillRect(renderer, &box);
 
-    if(!isRed) SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
-    else SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
+    if (!isRed || lightPhase == 1) {
+        SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+    } else {
+        SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
+    }
     
     SDL_FRect bulb = {150, 510, 40, 20};
     SDL_RenderFillRect(renderer, &bulb);
 }
 
-void drawLightForC(SDL_Renderer* renderer, bool isRed) {
+void drawLightForC(SDL_Renderer* renderer, bool isRed,bool lightPhase) {
     SDL_SetRenderDrawColor(renderer, 30, 30, 30, 255);
     SDL_FRect box = {505, 600, 30, 60};
     SDL_RenderFillRect(renderer, &box);
 
-    if(!isRed) SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
-    else SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
+    if (!isRed || lightPhase == 1) {
+        SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+    } else {
+        SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
+    }
     
     SDL_FRect bulb = {510, 610, 20, 40};
     SDL_RenderFillRect(renderer, &bulb);
 }
 
-void drawLightForD(SDL_Renderer* renderer, bool isRed) {
+void drawLightForD(SDL_Renderer* renderer, bool isRed,bool lightPhase) {
     SDL_FRect box = {600, 265, 60, 30}; 
     SDL_SetRenderDrawColor(renderer, 30, 30, 30, 255);
     SDL_RenderFillRect(renderer, &box);
 
-    if(!isRed) SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
-    else SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
+    if (!isRed || lightPhase == 1) {
+        SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+    } else {
+        SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
+    }
     
     SDL_FRect bulb = {610, 270, 40, 20};
     SDL_RenderFillRect(renderer, &bulb);
@@ -281,18 +312,18 @@ void drawLightForD(SDL_Renderer* renderer, bool isRed) {
 
 
 void refreshLight(SDL_Renderer *renderer, SharedData* sharedData) {
-    drawLightForA(renderer, (sharedData->nextLight == 0));
-    drawLightForB(renderer, (sharedData->nextLight == 1));
-    drawLightForC(renderer, (sharedData->nextLight == 2));
-    drawLightForD(renderer, (sharedData->nextLight == 3));
+    drawLightForA(renderer, (sharedData->nextLight == 0), sharedData->lightPhase);
+    drawLightForB(renderer, (sharedData->nextLight == 1), sharedData->lightPhase);
+    drawLightForC(renderer, (sharedData->nextLight == 2), sharedData->lightPhase);
+    drawLightForD(renderer, (sharedData->nextLight == 3), sharedData->lightPhase);
 }
 
 void drawVehicles(SDL_Renderer* renderer, SharedData* sharedData) {
     SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);
     float speed = 2.0f;
     float stopLineDistance = 260.0f;
-    float turnPoint0 = 310.0f; // Left turn start
-    float turnPoint2 = 410.0f; // Right turn start
+    float turnPoint0 = 310.0f;
+    float turnPoint2 = 410.0f;
 
     for (int road = 0; road < 4; road++) {
         for (int lane = 0; lane < 3; lane++) {
@@ -304,19 +335,24 @@ void drawVehicles(SDL_Renderer* renderer, SharedData* sharedData) {
                 int actualPosInLine = 0;
                 float targetProgress = 1500.0f; 
 
-                if (sharedData->nextLight != road && v->progress <= stopLineDistance) {
-                    for (int j = q->front; j <= q->rear; j++) {
-                        if (q->data[j].progress > v->progress) actualPosInLine++;
+                if (lane == 0) SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255);  
+                else if (lane == 1) SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);    
+                else if (lane == 2) SDL_SetRenderDrawColor(renderer, 0, 255, 255, 255); 
+                if (lane != 0) {
+                    for (int j = sharedData->traffic[road][1].front; j <= sharedData->traffic[road][1].rear; j++) {
+                        if (sharedData->traffic[road][1].data[j].progress > v->progress) actualPosInLine++;
                     }
-                    targetProgress = stopLineDistance - (actualPosInLine * 45.0f);
+                    for (int j = sharedData->traffic[road][2].front; j <= sharedData->traffic[road][2].rear; j++) {
+                        if (sharedData->traffic[road][2].data[j].progress > v->progress) actualPosInLine++;
+                    }
+                    targetProgress = stopLineDistance - (actualPosInLine * 40.0f);
                 }
-                if(lane==0){
+                if(lane==0||(sharedData->nextLight==road||v->progress>stopLineDistance)){
                     targetProgress=1500.0f;
                 }
                 if (v->progress < targetProgress) {
                     v->progress += speed;
                 }
-
                 SDL_FRect carRect;
                 int displayLane = (lane != 0) ? 1 : 0; 
 
