@@ -159,8 +159,8 @@ unsigned __stdcall chequeQueue(void* arg) {
                 }
             }
         }
-        avg_cars=(total_cars+2)/3;
-        greenlight_time=avg_cars*2000;
+        avg_cars=(total_cars+3)/4;
+        greenlight_time=avg_cars*1000;
         bool foundCongestion = false;
         if(data->priority==4){
             data->lightPhase = 0;

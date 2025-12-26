@@ -108,7 +108,7 @@ Since the number of roads and lanes is fixed, the algorithm scales linearly with
 ## 6. Source Code Link
 
 🔗 **GitHub Repository:**  
-<https://github.com/your-username/your-repository-name>
+(https://github.com/hoppercraft/dsa-queue-simulator)
 
 ---
 
@@ -130,7 +130,13 @@ Since the number of roads and lanes is fixed, the algorithm scales linearly with
 
 ---
 
-## 9. Conclusion
+## 9. Demo 
+
+/gif/Demo.gif
+
+---
+
+## 10. Conclusion
 
 This project demonstrates the use of **data structures**, **multithreading**, **IPC**, and **real-time rendering** to simulate an intelligent traffic control system. The design allows dynamic adaptation to traffic congestion, making it closer to real-world traffic management systems.
 
