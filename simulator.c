@@ -29,6 +29,7 @@ typedef struct {
 typedef struct {
     int nextLight;
     int priority;
+    int lightPhase; // 0: green, 1: yellow
     Queue traffic[4][3];
 } SharedData;
 
@@ -62,6 +63,7 @@ int main() {
     SharedData sharedData;
     sharedData.nextLight = 0;
     sharedData.priority = 4;
+    sharedData.lightPhase = 0;
     for(int i = 0; i < 4; i++) {
         for(int j = 0; j < 3; j++) {
             initQueue(&sharedData.traffic[i][j]);
@@ -146,12 +148,20 @@ unsigned __stdcall chequeQueue(void* arg) {
     SharedData* data = (SharedData*)arg;
     while (1) {
         if(data->priority==4){
-        data->nextLight=(data->nextLight+1)%4;
+            // Green phase
+            data->lightPhase = 0;
+            Sleep(8000);
+            // Yellow phase
+            data->lightPhase = 1;
+            Sleep(2000);
+            // Change to next light
+            data->nextLight=(data->nextLight+1)%4;
         }
         else{
             data->nextLight=data->priority;
+            data->lightPhase = 0;
+            Sleep(10000);
         }
-        Sleep(3000);
     }
     return 0;
 }
@@ -268,8 +278,8 @@ void drawVehicles(SDL_Renderer* renderer, SharedData* sharedData) {
     SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);
     float speed = 2.0f;
     float stopLineDistance = 260.0f;
-    float turnPoint0 = 310.0f;
-    float turnPoint2 = 410.0f;
+    float turnPoint0 = 310.0f; // Left turn start
+    float turnPoint2 = 410.0f; // Right turn start
 
     for (int road = 0; road < 4; road++) {
         for (int lane = 0; lane < 3; lane++) {
@@ -279,54 +289,49 @@ void drawVehicles(SDL_Renderer* renderer, SharedData* sharedData) {
             for (int i = q->front; i <= q->rear; i++) {
                 Vehicle* v = &q->data[i];
                 int actualPosInLine = 0;
-                float targetProgress = 1000.0f; 
+                float targetProgress=1500.0f; 
 
-                if (lane != 0) {
-                    for (int j = sharedData->traffic[road][1].front; j <= sharedData->traffic[road][1].rear; j++) {
-                        if (sharedData->traffic[road][1].data[j].progress > v->progress) actualPosInLine++;
+                if (sharedData->nextLight != road && v->progress <= stopLineDistance) {
+                    for (int j = q->front; j <= q->rear; j++) {
+                        if (q->data[j].progress > v->progress) actualPosInLine++;
                     }
-                    for (int j = sharedData->traffic[road][2].front; j <= sharedData->traffic[road][2].rear; j++) {
-                        if (sharedData->traffic[road][2].data[j].progress > v->progress) actualPosInLine++;
-                    }
-                    targetProgress = stopLineDistance - (actualPosInLine * 40.0f);
+                    targetProgress = stopLineDistance - (actualPosInLine * 45.0f);
                 }
-
+                if(lane==0){
+                    targetProgress=1500.0f;
+                }
                 if (v->progress < targetProgress) {
                     v->progress += speed;
                 }
 
-                if (lane == 0 && v->progress >= turnPoint0 && v->progress < turnPoint0 + speed) {
-                    int nextRoad = (road == 0) ? 3 : road - 1;
-                    enqueue(&sharedData->traffic[nextRoad][2], v->id); 
-                }
-
-                // 3. RENDERING WITH STEERING
-                int displayLane = (lane != 0) ? 1 : 0;
                 SDL_FRect carRect;
+                int displayLane = (lane != 0) ? 1 : 0; 
+
                 if (lane == 0 && v->progress >= turnPoint0) {
-                    float turnOffset = v->progress - turnPoint0; 
-                    
+                    float turnOffset = v->progress - turnPoint0;
                     if (road == 0)      carRect = (SDL_FRect){309 - turnOffset, turnPoint0, 30, 30};
                     else if (road == 1) carRect = (SDL_FRect){turnPoint0, 461 + turnOffset, 30, 30};
                     else if (road == 2) carRect = (SDL_FRect){461 + turnOffset, 800 - turnPoint0 - 30, 30, 30};
                     else if (road == 3) carRect = (SDL_FRect){800 - turnPoint0 - 30, 309 - turnOffset, 30, 30};
-                } else if(lane==1 && sharedData->nextLight==road){
-                     if (road == 0)      carRect = (SDL_FRect){309 + (displayLane * 50), v->progress, 30, 30};
-                    else if (road == 1) carRect = (SDL_FRect){v->progress, 461 - (displayLane * 50), 30, 30};
-                    else if (road == 2) carRect = (SDL_FRect){461 - (displayLane * 50), 800 - v->progress - 30, 30, 30};
-                    else if (road == 3) carRect = (SDL_FRect){800 - v->progress - 30, 309 + (displayLane * 50), 30, 30};
+                }
+                else if (lane == 2 && v->progress >= turnPoint2) {
+                    float turnOffset = v->progress - turnPoint2;
+                    if (road == 0)      carRect = (SDL_FRect){309 + 50 + turnOffset, turnPoint2, 30, 30};
+                    else if (road == 1) carRect = (SDL_FRect){turnPoint2, 461 - 50 - turnOffset, 30, 30};
+                    else if (road == 2) carRect = (SDL_FRect){461 - 50 - turnOffset, 800 - turnPoint2 - 30, 30, 30};
+                    else if (road == 3) carRect = (SDL_FRect){800 - turnPoint2 - 30, 309 + 50 + turnOffset, 30, 30};
                 }
                 else {
-
                     if (road == 0)      carRect = (SDL_FRect){309 + (displayLane * 50), v->progress, 30, 30};
                     else if (road == 1) carRect = (SDL_FRect){v->progress, 461 - (displayLane * 50), 30, 30};
                     else if (road == 2) carRect = (SDL_FRect){461 - (displayLane * 50), 800 - v->progress - 30, 30, 30};
                     else if (road == 3) carRect = (SDL_FRect){800 - v->progress - 30, 309 + (displayLane * 50), 30, 30};
                 }
+
                 SDL_RenderFillRect(renderer, &carRect);
             }
 
-            if (!isEmpty(q) && q->data[q->front].progress >= 800.0f) {
+            if (!isEmpty(q) && q->data[q->front].progress >= 1000.0f) {
                 dequeue(q);
             }
         }
