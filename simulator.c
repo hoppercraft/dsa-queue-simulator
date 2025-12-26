@@ -32,7 +32,7 @@ typedef struct {
     int lightPhase; 
     Queue traffic[4][3];
 } SharedData;
-
+int queueSize(Queue* q);
 bool initializeSDL(SDL_Window **window, SDL_Renderer **renderer);
 void drawRoadsAndLanes(SDL_Renderer *renderer);
 void drawLightForA(SDL_Renderer* renderer, bool isRed ,bool lightPhase);
@@ -155,7 +155,7 @@ unsigned __stdcall chequeQueue(void* arg) {
             for (int l = 1; l < 3; l++) {  
                 Queue* q = &data->traffic[r][l];
                 if (!isEmpty(q)) {
-                    total_cars += (q->rear - q->front) + 1;
+                    total_cars += queueSize(q);
                 }
             }
         }
@@ -196,6 +196,11 @@ unsigned __stdcall chequeQueue(void* arg) {
         }
     }
     return 0;
+}
+
+int queueSize(Queue* q) {
+    if (isEmpty(q)) return 0;
+    return q->rear - q->front + 1;
 }
 
 
