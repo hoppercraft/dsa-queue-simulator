@@ -132,7 +132,7 @@ Since the number of roads and lanes is fixed, the algorithm scales linearly with
 
 ## 9. Demo 
 
-/gif/Demo.gif
+![Traffic Simulator Demo](gif/demo.gif)
 
 ---
 
